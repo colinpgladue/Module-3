@@ -178,7 +178,12 @@ class FunctionBase:
             (see `is_constant` to remove unneeded variables)
 
         """
-        raise NotImplementedError('Need to include this file from past assignment.')
+        return_list = []
+        backward_outputs = wrap_tuple(cls.backward(ctx, d_output))
+        for idx, inp in enumerate(inputs):
+            if not is_constant(inp):
+                return_list.append(VariableWithDeriv(inp, backward_outputs[idx]))
+        return return_list
 
 
 def is_leaf(val):
@@ -202,4 +207,13 @@ def backpropagate(final_variable_with_deriv):
 
     No return. Should write to its results to the derivative values of each leaf.
     """
-    raise NotImplementedError('Need to include this file from past assignment.')
+    q = deque()
+    q.append(final_variable_with_deriv)
+    while q:
+        current_var_with_der = q.popleft()
+        if is_leaf(current_var_with_der.variable):
+            current_var_with_der.variable._add_deriv(current_var_with_der.deriv)
+        else:
+            # VPD = Variable + Derivative
+            for VPD in current_var_with_der.variable.history.backprop_step(current_var_with_der.deriv):
+                q.append(VPD)
